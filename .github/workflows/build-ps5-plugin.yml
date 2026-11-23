@@ -1,0 +1,82 @@
+name: Build PS5 Translator Plugin (5.50 etaHEN)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ps5-plugin/**'
+      - 'shared-protocol/**'
+      - '.github/workflows/build-ps5-plugin.yml'
+
+jobs:
+  build-plugin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Build Utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl unzip tar jq clang make
+
+      - name: Download Latest ps5-payload-dev SDK
+        run: |
+          mkdir -p /opt/ps5-payload-sdk
+          SDK_URL=$(curl -s https://api.github.com/repos/ps5-payload-dev/sdk/releases/latest \
+            | jq -r '.assets[] | select(.name | test("tar\\.gz$|tgz$|zip$")) | .browser_download_url' \
+            | head -n 1)
+          echo "Downloading PS5 SDK from: $SDK_URL"
+          if [[ "$SDK_URL" == *.zip ]]; then
+            curl -fL "$SDK_URL" -o /tmp/ps5-sdk.zip
+            unzip -q /tmp/ps5-sdk.zip -d /opt/ps5-payload-sdk
+          else
+            curl -fL "$SDK_URL" -o /tmp/ps5-sdk.tar.gz
+            tar -xzf /tmp/ps5-sdk.tar.gz -C /opt/ps5-payload-sdk
+          fi
+          COMPILER=$(find /opt/ps5-payload-sdk -type f -name "prospero-clang++" | head -n 1)
+          if [ -z "$COMPILER" ]; then
+            echo "ERROR: prospero-clang++ not found inside extracted SDK"
+            find /opt/ps5-payload-sdk -maxdepth 4
+            exit 1
+          fi
+          SDK_ROOT=$(dirname "$(dirname "$COMPILER")")
+          echo "PS5_PAYLOAD_SDK=$SDK_ROOT" >> $GITHUB_ENV
+          echo "PS5_CXX=$COMPILER" >> $GITHUB_ENV
+          echo "Detected SDK at: $SDK_ROOT"
+
+      - name: Download stb_truetype.h & Cairo-Bold.ttf
+        run: |
+          curl -fL "https://raw.githubusercontent.com/nothings/stb/master/stb_truetype.h" \
+            -o ps5-plugin/src/overlay/stb_truetype.h
+          mkdir -p dist/data/ps5_translator/fonts
+          curl -fL "https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Bold.ttf" \
+            -o dist/data/ps5_translator/fonts/Cairo-Bold.ttf
+
+      - name: Compile ps5_translator.plugin
+        run: |
+          make -C ps5-plugin PS5_PAYLOAD_SDK="$PS5_PAYLOAD_SDK" CXX="$PS5_CXX"
+
+      - name: Package Ready-to-Upload Bundle
+        run: |
+          mkdir -p dist/data/etaHEN/plugins
+          cp ps5-plugin/ps5_translator.plugin dist/data/etaHEN/plugins/ps5_translator.plugin
+          cat << 'EOF' > dist/data/ps5_translator/PPSA00000.ini
+          # Default PS5 Arabic Translator Config
+          roi_x=268
+          roi_y=842
+          roi_w=1382
+          roi_h=172
+          overlay_offset_y=0
+          net_pref=0
+          paused=0
+          EOF
+
+      - name: Upload PS5 Plugin Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS5-Translator-Plugin
+          path: dist/
+          retention-days: 30
