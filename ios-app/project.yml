@@ -1,0 +1,40 @@
+name: PS5Translator
+options:
+  bundleIdPrefix: com.ps5translator
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    TARGETED_DEVICE_FAMILY: "1"
+    SUPPORTS_MACCATALYST: NO
+    ENABLE_BITCODE: NO
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGN_IDENTITY: ""
+
+targets:
+  PS5Translator:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources
+    info:
+      path: Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ps5translator.app
+        INFOPLIST_FILE: Info.plist
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(PROJECT_DIR)/Frameworks"
+    dependencies:
+      - sdk: Vision.framework
+      - sdk: Metal.framework
+      - sdk: Accelerate.framework
+      - sdk: libsqlite3.tbd
+      - framework: Frameworks/llama.xcframework
+        embed: true
