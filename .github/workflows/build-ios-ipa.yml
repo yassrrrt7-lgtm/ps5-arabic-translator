@@ -20,14 +20,31 @@ jobs:
         run: brew install xcodegen
 
       - name: Download Latest llama.xcframework (Metal GPU)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ios-app/Frameworks /tmp/llama-xcf
-          XCF_URL=$(curl -s https://api.github.com/repos/ggml-org/llama.cpp/releases/latest \
-            | jq -r '.assets[] | select(.name | test("xcframework.*\\.zip$")) | .browser_download_url' \
-            | head -n 1)
+          XCF_URL=$(curl -sL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=15" \
+            | jq -r '[.[].assets[] | select(.name | test("xcframework.*\\.(zip|tar\\.gz|tgz)$"; "i")) | .browser_download_url] | first // empty')
+
+          if [ -z "$XCF_URL" ]; then
+            echo "ERROR: Could not find xcframework asset in latest 15 llama.cpp releases"
+            exit 1
+          fi
+
           echo "Downloading llama.xcframework from: $XCF_URL"
-          curl -fL "$XCF_URL" -o /tmp/llama-xcf/llama.zip
-          unzip -q /tmp/llama-xcf/llama.zip -d /tmp/llama-xcf/extracted
+          if [[ "$XCF_URL" == *.zip ]]; then
+            curl -fL "$XCF_URL" -o /tmp/llama-xcf/llama.zip
+            unzip -q /tmp/llama-xcf/llama.zip -d /tmp/llama-xcf/extracted
+          else
+            curl -fL "$XCF_URL" -o /tmp/llama-xcf/llama.tar.gz
+            mkdir -p /tmp/llama-xcf/extracted
+            tar -xzf /tmp/llama-xcf/llama.tar.gz -C /tmp/llama-xcf/extracted
+          fi
+
           FOUND_XCF=$(find /tmp/llama-xcf/extracted -type d -name "llama.xcframework" | head -n 1)
           if [ -z "$FOUND_XCF" ]; then
             echo "ERROR: llama.xcframework not found in downloaded archive"
