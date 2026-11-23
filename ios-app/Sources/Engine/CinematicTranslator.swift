@@ -138,7 +138,6 @@ public actor CinematicTranslator {
 
         var modelParams = llama_model_default_params()
         modelParams.n_gpu_layers = 99 // Offload all transformer layers to Apple A18 Metal GPU
-        modelParams.use_mmap = true
 
         guard let loadedModel = llama_model_load_from_file(url.path, modelParams) else {
             throw TranslatorError.modelLoadFailed(url.lastPathComponent)
