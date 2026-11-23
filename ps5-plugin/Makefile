@@ -17,7 +17,7 @@ OBJS            := $(SRCS:.cpp=.o)
 
 CXXFLAGS        := -O2 -std=c++17 -fPIC -Wall -Wextra -Wno-unused-parameter \
                    -Isrc -Isrc/overlay -I../shared-protocol
-LDFLAGS         := -shared -lpthread -lm
+LDFLAGS         := -shared -lpthread
 
 .PHONY: all clean
 
