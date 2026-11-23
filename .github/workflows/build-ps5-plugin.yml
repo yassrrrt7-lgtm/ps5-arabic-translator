@@ -17,10 +17,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Build Utilities
+      - name: Install Build Utilities & Arabic Fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl unzip tar jq clang make
+          sudo apt-get install -y curl unzip tar jq clang make fonts-noto-core fonts-dejavu-core
 
       - name: Download Latest ps5-payload-dev SDK
         run: |
@@ -47,13 +47,15 @@ jobs:
           echo "PS5_CXX=$COMPILER" >> $GITHUB_ENV
           echo "Detected SDK at: $SDK_ROOT"
 
-      - name: Download stb_truetype.h & Cairo-Bold.ttf
+      - name: Prepare stb_truetype.h & Arabic Bold Font
         run: |
           curl -fL "https://raw.githubusercontent.com/nothings/stb/master/stb_truetype.h" \
             -o ps5-plugin/src/overlay/stb_truetype.h
           mkdir -p dist/data/ps5_translator/fonts
-          curl -fL "https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Bold.ttf" \
-            -o dist/data/ps5_translator/fonts/Cairo-Bold.ttf
+          FONT_PATH=$(find /usr/share/fonts -type f \( -iname "NotoSansArabic-Bold.ttf" -o -iname "NotoNaskhArabic-Bold.ttf" -o -iname "DejaVuSans-Bold.ttf" \) | head -n 1)
+          echo "Using Arabic font: $FONT_PATH"
+          cp "$FONT_PATH" dist/data/ps5_translator/fonts/NotoSansArabic-Bold.ttf
+          cp "$FONT_PATH" dist/data/ps5_translator/fonts/Cairo-Bold.ttf
 
       - name: Compile ps5_translator.plugin
         run: |
